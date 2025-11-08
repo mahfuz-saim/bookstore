@@ -1,18 +1,21 @@
 const booksTable = require("../models/book.model");
 const db = require("../db");
+const { eq } = require("drizzle-orm");
 
-exports.getAllBooks = (req, res) => {
-  res.json(BOOKS);
+exports.getAllBooks = async function (req, res) {
+  const books = await db.select().from(booksTable);
+  res.json(books);
 };
 
-exports.getBookById = (req, res) => {
-  const bookId = parseInt(req.params.id);
+exports.getBookById = async function (req, res) {
+  const id = req.params.id;
 
-  if (isNaN(bookId)) {
-    return res.status(400).json({ error: "Invalid book ID" });
-  }
+  const [book] = await db
+    .select()
+    .from(booksTable)
+    .where((table) => eq(table.id, id))
+    .limit(1);
 
-  const book = BOOKS.find((b) => b.id === bookId);
   if (!book) {
     return res.status(404).json({ error: "Book not found" });
   }
@@ -20,31 +23,29 @@ exports.getBookById = (req, res) => {
   res.json(book);
 };
 
-exports.createBook = (req, res) => {
-  const { title, author } = req.body;
-  if (!title || !author) {
+exports.createBook = async function (req, res) {
+  const { title, description, authorId } = req.body;
+
+  if (!title || title === "") {
     return res.status(400).json({ error: "Title and author are required" });
   }
 
-  const newBook = {
-    id: BOOKS.length + 1,
-    title,
-    author,
-  };
-  BOOKS.push(newBook);
-  return res.status(201).json({ message: "Book created", book: newBook });
+  const [result] = await db
+    .insert(booksTable)
+    .values({ title, authorId, description })
+    .returning({
+      id: booksTable.id,
+    });
+
+  return res
+    .status(201)
+    .json({ message: "Book created success", id: result.id });
 };
 
-exports.deleteBookById = (req, res) => {
-  const bookId = parseInt(req.params.id);
-  if (isNaN(bookId)) {
-    return res.status(400).json({ error: "Invalid book ID" });
-  }
-  const bookIndex = BOOKS.findIndex((b) => b.id === bookId);
-  if (bookIndex === -1) {
-    return res.status(404).json({ error: "Book not found" });
-  }
+exports.deleteBookById = async function (req, res) {
+  const id = req.params.id;
 
-  BOOKS.splice(bookIndex, 1);
+  await db.delete(booksTable).where(eq(booksTable.id, id));
+
   return res.status(204).json({ message: "Book deleted" });
 };
