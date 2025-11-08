@@ -1,4 +1,5 @@
-const { BOOKS } = require("../models/book");
+const booksTable = require("../models/book.model");
+const db = require("../db");
 
 exports.getAllBooks = (req, res) => {
   res.json(BOOKS);
